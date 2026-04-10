@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1890FF">
+<title>Meeting Translator</title>
+<style>
+:root{--primary:#1890FF;--primary-light:#E6F4FF;--danger:#FF4D4F;--bg:#F5F5F5;--card:#FFFFFF;--text:#1A1A1A;--text2:#666666;--text3:#BFBFBF;--border:#E8E8E8;--en-col:#1565C0;--zh-col:#2E7D32;--radius:12px;--shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
+body{background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-size:15px;}
+.header{background:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-shrink:0;z-index:10;}
+.header-title{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--text3);transition:background .3s;}
+.rec-dot.active{background:var(--danger);animation:pulse 1.2s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,77,79,.6)}70%{box-shadow:0 0 0 8px rgba(255,77,79,0)}100%{box-shadow:0 0 0 0 rgba(255,77,79,0)}}
+.header-actions{display:flex;gap:6px;}
+.icon-btn{width:36px;height:36px;border:none;background:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:var(--text2);transition:background .15s;}
+.icon-btn:active{background:var(--bg);}
+.lang-bar{background:#fff;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.lang-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.lang-row:last-child{margin-bottom:0;}
+.lang-lbl{font-size:.68rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;width:26px;flex-shrink:0;}
+.pills{display:flex;flex-wrap:wrap;gap:4px;}
+.pill{padding:3px 10px;border-radius:20px;border:1.5px solid var(--border);font-size:.77rem;cursor:pointer;color:var(--text2);background:#fff;transition:all .15s;white-space:nowrap;}
+.pill.active{border-color:var(--primary);color:var(--primary);background:var(--primary-light);font-weight:700;}
+.pill:active{opacity:.7;}
+.view-toggle{background:#fff;padding:5px 16px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;gap:4px;}
+.view-btn{flex:1;padding:5px;border:1.5px solid var(--border);background:#fff;border-radius:6px;font-size:.73rem;font-weight:700;cursor:pointer;color:var(--text2);transition:all .15s;}
+.view-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.history{flex:1;overflow-y:auto;padding:12px;-webkit-overflow-scrolling:touch;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--text3);}
+.empty-icon{font-size:3rem;}
+.empty-text{font-size:.9rem;text-align:center;line-height:1.6;}
+.seg-card{background:var(--card);border-radius:var(--radius);border-left:3px solid var(--border);padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow);}
+.seg-meta{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.seg-ts{font-size:.67rem;color:var(--text3);}
+.seg-spk{font-size:.72rem;font-weight:700;padding:2px 10px;border-radius:20px;border:1px solid;}
+.seg-ltag{font-size:.65rem;color:var(--text3);margin-left:auto;}
+.seg-section{margin-bottom:8px;}
+.seg-section-lbl{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;padding-bottom:3px;border-bottom:2px solid;}
+.seg-section-lbl.src{color:var(--en-col);border-color:var(--en-col);}
+.seg-section-lbl.tgt{color:var(--zh-col);border-color:var(--zh-col);}
+.seg-text{font-size:.92rem;line-height:1.7;}
+.seg-text.src{color:#0D47A1;}
+.seg-text.tgt{color:#1B5E20;}
+.no-speech{font-size:.85rem;color:var(--text3);font-style:italic;}
+.bottom-bar{background:#fff;border-top:1px solid var(--border);padding:12px 20px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;}
+.ctrl-wrap{display:flex;gap:8px;}
+.ctrl-btn{width:42px;height:42px;border:1.5px solid var(--border);background:#fff;border-radius:10px;cursor:pointer;font-size:1.05rem;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .15s;}
+.ctrl-btn:active{background:var(--bg);}
+.ctrl-btn.lock-off{opacity:.35;}
+.rec-area{position:relative;display:flex;flex-direction:column;align-items:center;}
+.record-btn{width:72px;height:72px;border-radius:50%;background:var(--primary);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:1.4rem;color:#fff;box-shadow:0 4px 14px rgba(24,144,255,.4);transition:all .2s;}
+.record-btn.rec-on{background:var(--danger);box-shadow:0 4px 14px rgba(255,77,79,.4);animation:rbpulse 1.5s infinite;}
+.record-btn:active{transform:scale(.93);}
+@keyframes rbpulse{0%,100%{box-shadow:0 4px 14px rgba(255,77,79,.4);transform:scale(1)}50%{box-shadow:0 4px 24px rgba(255,77,79,.6);transform:scale(1.04)}}
+.rec-lbl{font-size:.52rem;font-weight:800;letter-spacing:.06em;margin-top:1px;}
+.vol-bars{display:flex;align-items:flex-end;gap:2px;height:16px;position:absolute;bottom:-22px;}
+.vol-bar{width:3px;height:3px;background:var(--danger);border-radius:2px;transition:height .1s;}
+.proc-bar{height:2px;background:linear-gradient(90deg,transparent,var(--primary),transparent);background-size:200% 100%;animation:shimmer 1.4s infinite;position:fixed;top:0;left:0;right:0;z-index:200;display:none;}
+.proc-bar.on{display:block;}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.toast{position:fixed;bottom:108px;left:50%;transform:translateX(-50%) translateY(16px);background:rgba(0,0,0,.78);color:#fff;padding:8px 16px;border-radius:20px;font-size:.82rem;opacity:0;transition:all .28s;z-index:300;white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:flex-end;}
+.modal-ov.open{display:flex;}
+.modal{background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:85dvh;overflow-y:auto;padding:16px 20px 24px;}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px;}
+.modal-title{font-size:1rem;font-weight:700;margin-bottom:14px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:.8rem;font-weight:600;color:var(--text2);display:block;margin-bottom:6px;}
+.form-input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;color:var(--text);}
+.form-input:focus{border-color:var(--primary);}
+.form-hint{font-size:.73rem;color:var(--text3);margin-top:5px;line-height:1.5;}
+.modal-btns{display:flex;gap:8px;margin-top:16px;}
+.btn-pri{flex:1;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;}
+.btn-sec{padding:12px 16px;background:#fff;color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;}
+.chunk-count{width:44px;height:44px;font-size:.62rem;color:var(--text3);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.3;}
+</style>
+</head>
+<body>
+<div class="proc-bar" id="procBar"></div>
+<div class="toast" id="toast"></div>
+<div class="header">
+  <div class="header-title"><span class="rec-dot" id="recDot"></span><span id="appTitle">Meeting Translator</span></div>
+  <div class="header-actions">
+    <button class="icon-btn" onclick="toggleUILang()">🌐</button>
+    <button class="icon-btn" onclick="openSettings()">⚙️</button>
+  </div>
+</div>
+<div class="lang-bar">
+  <div class="lang-row"><span class="lang-lbl" id="lblSrc">SRC</span><div class="pills" id="srcPills"></div></div>
+  <div class="lang-row"><span class="lang-lbl" id="lblTgt">TGT</span><div class="pills" id="tgtPills"></div></div>
+</div>
+<div class="view-toggle">
+  <button class="view-btn active" data-v="both" onclick="setView('both')" id="vBoth">Both</button>
+  <button class="view-btn" data-v="source" onclick="setView('source')" id="vSrc">Source</button>
+  <button class="view-btn" data-v="translation" onclick="setView('translation')" id="vTgt">Translation</button>
+</div>
+<div class="history" id="history">
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">🎙️</div>
+    <div class="empty-text" id="emptyText">Tap the button below to start recording</div>
+  </div>
+</div>
+<div class="bottom-bar">
+  <div class="ctrl-wrap">
+    <button class="ctrl-btn" onclick="clearHistory()">🗑️</button>
+    <button class="ctrl-btn" onclick="exportTxt()">📥</button>
+  </div>
+  <div class="rec-area">
+    <button class="record-btn" id="recordBtn" onclick="toggleRecord()">🎙️<span class="rec-lbl" id="recLbl">TAP</span></button>
+    <div class="vol-bars" id="volBars"><div class="vol-bar"></div><div class="vol-bar"></div><div class="vol-bar"></div><div class="vol-bar"></div><div class="vol-bar"></div></div>
+  </div>
+  <div class="ctrl-wrap">
+    <button class="ctrl-btn" id="lockBtn" onclick="toggleLock()">📌</button>
+    <div class="chunk-count" id="chunkCount">0<br><span>chunks</span></div>
+  </div>
+</div>
+<div class="modal-ov" id="settingsModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="mTitle">⚙️ Settings</div>
+    <div class="form-group"><label class="form-label" id="lApiKey">Gemini API Key</label><input class="form-input" type="password" id="apiKeyInput" placeholder="AIza…"><div class="form-hint" id="hApiKey">Get free key: <strong>aistudio.google.com</strong> → Get API Key.<br>Stored on <em>this device only</em>.</div></div>
+    <div class="form-group"><label class="form-label" id="lSilence">Silence timeout (seconds)</label><input class="form-input" type="number" id="silenceInput" value="1.5" min="0.5" max="5" step="0.5"></div>
+    <div class="form-group"><label class="form-label" id="lMaxChunk">Max chunk duration (seconds)</label><input class="form-input" type="number" id="maxChunkInput" value="12" min="5" max="30" step="1"></div>
+    <div class="modal-btns"><button class="btn-sec" onclick="closeSettings()" id="btnCancel">Cancel</button><button class="btn-pri" onclick="saveSettings()" id="btnSave">Save</button></div>
+  </div>
+</div>
+<script>
+const I18N={en:{appTitle:'Meeting Translator',lblSrc:'SRC',lblTgt:'TGT',vBoth:'Both',vSrc:'Source',vTgt:'Translation',emptyText:'Tap the button below to start recording',recStart:'TAP',recStop:'STOP',mTitle:'⚙️ Settings',lApiKey:'Gemini API Key',hApiKey:'Get free key: aistudio.google.com → Get API Key. Stored on this device only.',lSilence:'Silence timeout (seconds)',lMaxChunk:'Max chunk duration (seconds)',btnCancel:'Cancel',btnSave:'Save',noSpeech:'(No recognizable speech)',chunks:'chunks',exportEmpty:'No history to export.',exportDone:'.txt downloaded!',needKey:'Please set your Gemini API Key in Settings ⚙️',micDenied:'Microphone access denied. Please allow mic and retry.',fileHeader:'Meeting Translation Record'},zh:{appTitle:'會議翻譯器',lblSrc:'來源',lblTgt:'目標',vBoth:'全部',vSrc:'原文',vTgt:'翻譯',emptyText:'點擊下方按鈕開始錄音',recStart:'開始',recStop:'停止',mTitle:'⚙️ 設定',lApiKey:'Gemini API Key',hApiKey:'免費取得：aistudio.google.com → Get API Key。僅存於本機裝置。',lSilence:'靜音判斷（秒）',lMaxChunk:'最長錄音（秒）',btnCancel:'取消',btnSave:'儲存',noSpeech:'（此段無可辨識語音）',chunks:'段',exportEmpty:'尚無翻譯紀錄可匯出。',exportDone:'.txt 已下載！',needKey:'請在設定 ⚙️ 中輸入 Gemini API Key',micDenied:'麥克風存取被拒，請允許麥克風權限後重試。',fileHeader:'會議翻譯紀錄'}};
+const SRC_LANGS=[{id:'auto',label:'🔄 Auto',col:'AUTO-DETECT',full:'the spoken language (auto-detect)'},{id:'en',label:'🇺🇸 EN',col:'ENGLISH',full:'English'},{id:'vi',label:'🇻🇳 VN',col:'VIETNAMESE',full:'Vietnamese (Tiếng Việt)'},{id:'th',label:'🇹🇭 TH',col:'THAI',full:'Thai (ภาษาไทย)'},{id:'km',label:'🇰🇭 KH',col:'KHMER',full:'Khmer (ភាសាខ្មែរ)'},{id:'yue',label:'🎙️ 粵語',col:'CANTONESE',full:'Cantonese (廣東話)'}];
+const TGT_LANGS=[{id:'zh-TW',label:'🇹🇼 繁中',col:'繁體中文',full:'Traditional Chinese (繁體中文)'},{id:'zh-CN',label:'🇨🇳 簡中',col:'简体中文',full:'Simplified Chinese (简体中文)'},{id:'en',label:'🇺🇸 EN',col:'ENGLISH',full:'English'},{id:'vi',label:'🇻🇳 VN',col:'VIETNAMESE',full:'Vietnamese (Tiếng Việt)'},{id:'th',label:'🇹🇭 TH',col:'THAI',full:'Thai (ภาษาไทย)'},{id:'km',label:'🇰🇭 KH',col:'KHMER',full:'Khmer (ភាសាខ្មែរ)'}];
+const PALETTE=[{bg:'#EEF2FF',text:'#3B5BDB',border:'#4C6EF5'},{bg:'#EBFBEE',text:'#2F9E44',border:'#40C057'},{bg:'#FFF5F5',text:'#E03131',border:'#FA5252'},{bg:'#F3F0FF',text:'#7048E8',border:'#7950F2'},{bg:'#FFF9DB',text:'#E67700',border:'#F59F00'}];
+const MODELS=['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash'];
+const S={uiLang:localStorage.getItem('uiLang')||'en',srcLang:localStorage.getItem('srcLang')||'auto',tgtLang:localStorage.getItem('tgtLang')||'zh-TW',apiKey:localStorage.getItem('geminiKey')||'',silenceMs:+localStorage.getItem('silenceMs')||1500,maxMs:+localStorage.getItem('maxMs')||12000,view:'both',lockScroll:true,history:[],colors:{},colorIdx:0,recording:false};
+const t=k=>(I18N[S.uiLang]||I18N.en)[k]||k;
+const $=id=>document.getElementById(id);
+const getLang=(arr,id)=>arr.find(l=>l.id===id)||arr[0];
+function speakerColor(name){if(!S.colors[name]){S.colors[name]=PALETTE[S.colorIdx%PALETTE.length];S.colorIdx++;}return S.colors[name];}
+function showToast(msg,ms=2800){const el=$('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),ms);}
+function vibrate(pat){if(navigator.vibrate)navigator.vibrate(pat);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function blobToB64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});}
+function buildPrompt(srcId,tgtId){const src=getLang(SRC_LANGS,srcId),tgt=getLang(TGT_LANGS,tgtId);const instr=srcId==='auto'?'Auto-detect the spoken language and transcribe faithfully in its original language.':`The audio is in ${src.full}. Transcribe faithfully in ${src.full}.`;return `You are a professional real-time meeting transcription and translation assistant.\nTask:\n1. ${instr}\n2. Translate each segment into ${tgt.full}.\nOutput ONLY a valid JSON object:\n{"speaker":"Speaker","status":"ok","segments":[{"en":"<original>","zh":"<translation in ${tgt.full}>"}]}\nRules:\n- "en" = original source transcript\n- "zh" = translation in ${tgt.full}\n- No speech detected -> {"speaker":"Speaker","status":"ok","segments":[]}\n- Output NOTHING outside the JSON.`;}
+async function callGemini(blob,mime){const b64=await blobToB64(blob);const prompt=buildPrompt(S.srcLang,S.tgtLang);for(const model of MODELS){try{const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${S.apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system_instruction:{parts:[{text:prompt}]},contents:[{role:'user',parts:[{inline_data:{mime_type:mime,data:b64}}]}],generationConfig:{response_mime_type:'application/json'}})});if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${res.status}`);}const data=await res.json();let txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'{}';txt=txt.replace(/^```json\n?/,'').replace(/^```\n?/,'').replace(/\n?```$/,'').trim();return JSON.parse(txt);}catch(e){console.warn(model,e.message);}}throw new Error('All models failed');}
+let audioStream=null,audioCtx=null,analyser=null,mediaRec=null,audioChunks=[],maxTimer=null,mime='',rafId=null;
+function getSupportedMime(){const types=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'];for(const t of types)if(MediaRecorder.isTypeSupported(t))return t;return '';}
+async function startRecording(){if(!S.apiKey){showToast(t('needKey'));return;}try{audioStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});}catch(e){showToast(t('micDenied'));return;}vibrate(50);mime=getSupportedMime();audioCtx=new(window.AudioContext||window.webkitAudioContext)();analyser=audioCtx.createAnalyser();analyser.fftSize=256;audioCtx.createMediaStreamSource(audioStream).connect(analyser);audioChunks=[];mediaRec=new MediaRecorder(audioStream,mime?{mimeType:mime}:{});mime=mediaRec.mimeType;mediaRec.ondataavailable=e=>{if(e.data&&e.data.size>0)audioChunks.push(e.data);};mediaRec.start(500);S.recording=true;updateRecUI();startVolAnim();startSilenceLoop();maxTimer=setInterval(()=>submitChunk('max'),S.maxMs);}
+function startSilenceLoop(){const data=new Uint8Array(analyser.frequencyBinCount);let silStart=null;(function check(){if(!S.recording)return;analyser.getByteFrequencyData(data);const avg=data.reduce((a,b)=>a+b,0)/data.length;if(avg<13){if(!silStart)silStart=Date.now();else if(Date.now()-silStart>S.silenceMs&&audioChunks.length>0){submitChunk('silence');silStart=null;}}else silStart=null;setTimeout(check,150);})();}
+function startVolAnim(){const bars=$('volBars').children;const data=new Uint8Array(analyser.frequencyBinCount);(function frame(){if(!S.recording){[...bars].forEach(b=>b.style.height='3px');return;}analyser.getByteFrequencyData(data);[...bars].forEach((b,i)=>{b.style.height=Math.max(3,Math.min(16,(data[i*6]||0)/255*16))+'px';});rafId=requestAnimationFrame(frame);})();}
+async function submitChunk(reason){if(!audioChunks.length)return;if(mediaRec&&mediaRec.state==='recording'){mediaRec.requestData();await new Promise(r=>setTimeout(r,120));}const chunks=[...audioChunks];audioChunks=[];const blob=new Blob(chunks,{type:mime});if(blob.size<2000)return;processChunk(blob,mime);}
+async function stopRecording(){S.recording=false;clearInterval(maxTimer);if(cancelAnimationFrame)cancelAnimationFrame(rafId);if(mediaRec&&mediaRec.state!=='inactive'){if(audioChunks.length){mediaRec.requestData();await new Promise(r=>setTimeout(r,200));const blob=new Blob([...audioChunks],{type:mime});if(blob.size>2000)processChunk(blob,mime);}mediaRec.stop();}if(audioStream){audioStream.getTracks().forEach(t=>t.stop());audioStream=null;}if(audioCtx){audioCtx.close();audioCtx=null;}vibrate([50,50,50]);updateRecUI();[...$('volBars').children].forEach(b=>b.style.height='3px');}
+function toggleRecord(){S.recording?stopRecording():startRecording();}
+async function processChunk(blob,mime){$('procBar').classList.add('on');try{const r=await callGemini(blob,mime);if(r&&r.status!=='short_or_invalid')addEntry(r);}catch(e){console.error(e);showToast('⚠️ '+e.message.slice(0,60));}finally{$('procBar').classList.remove('on');}}
+function addEntry(result){const entry={...result,ts:new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),srcLang:S.srcLang,tgtLang:S.tgtLang};S.history.push(entry);appendCard(entry);updateStats();if(S.lockScroll)scrollBottom();}
+function appendCard(entry){const hist=$('history');$('emptyState').style.display='none';hist.appendChild(buildCard(entry));}
+function buildCard(entry){const col=speakerColor(entry.speaker||'Speaker');const src=getLang(SRC_LANGS,entry.srcLang);const tgt=getLang(TGT_LANGS,entry.tgtLang);const showSrc=S.view==='both'||S.view==='source';const showTgt=S.view==='both'||S.view==='translation';const div=document.createElement('div');div.className='seg-card';div.style.borderLeftColor=col.border;let html=`<div class="seg-meta"><span class="seg-ts">🕐 ${esc(entry.ts)}</span><span class="seg-spk" style="background:${col.bg};color:${col.text};border-color:${col.border}">👤 ${esc(entry.speaker||'Speaker')}</span><span class="seg-ltag">${src.label}→${tgt.label}</span></div>`;if(!entry.segments||!entry.segments.length){html+=`<div class="no-speech">${t('noSpeech')}</div>`;}else{if(showSrc)html+=`<div class="seg-section"><div class="seg-section-lbl src">${src.label} ${src.col}</div>${entry.segments.map(s=>`<div class="seg-text src">${esc(s.en)}</div>`).join('')}</div>`;if(showTgt)html+=`<div class="seg-section"><div class="seg-section-lbl tgt">${tgt.label} ${tgt.col}</div>${entry.segments.map(s=>`<div class="seg-text tgt">${esc(s.zh)}</div>`).join('')}</div>`;}div.innerHTML=html;return div;}
+function fullRerender(){const hist=$('history');[...hist.querySelectorAll('.seg-card')].forEach(e=>e.remove());if(S.history.length===0){$('emptyState').style.display='flex';return;}$('emptyState').style.display='none';S.history.forEach(e=>hist.appendChild(buildCard(e)));}
+function clearHistory(){if(!S.history.length)return;S.history=[];S.colors={};S.colorIdx=0;$('history').querySelectorAll('.seg-card').forEach(e=>e.remove());$('emptyState').style.display='flex';updateStats();}
+function scrollBottom(){const h=$('history');setTimeout(()=>h.scrollTo({top:h.scrollHeight,behavior:'smooth'}),50);}
+function updateStats(){$('chunkCount').innerHTML=`${S.history.length}<br><span>${t('chunks')}</span>`;}
+function updateRecUI(){const btn=$('recordBtn'),dot=$('recDot');if(S.recording){btn.classList.add('rec-on');btn.innerHTML=`⏹<span class="rec-lbl">${t('recStop')}</span>`;dot.classList.add('active');}else{btn.classList.remove('rec-on');btn.innerHTML=`🎙️<span class="rec-lbl">${t('recStart')}</span>`;dot.classList.remove('active');}}
+function setView(v){S.view=v;document.querySelectorAll('.view-btn').forEach(b=>b.classList.toggle('active',b.dataset.v===v));fullRerender();}
+function toggleLock(){S.lockScroll=!S.lockScroll;$('lockBtn').classList.toggle('lock-off',!S.lockScroll);if(S.lockScroll)scrollBottom();}
+function toggleUILang(){S.uiLang=S.uiLang==='en'?'zh':'en';localStorage.setItem('uiLang',S.uiLang);applyI18n();}
+function renderPills(){function makePills(container,langs,currentId,key,storageKey){container.innerHTML='';langs.forEach(lang=>{const btn=document.createElement('button');btn.className='pill'+(lang.id===currentId?' active':'');btn.textContent=lang.label;btn.onclick=()=>{S[key]=lang.id;localStorage.setItem(storageKey,lang.id);renderPills();};container.appendChild(btn);});}makePills($('srcPills'),SRC_LANGS,S.srcLang,'srcLang','srcLang');makePills($('tgtPills'),TGT_LANGS,S.tgtLang,'tgtLang','tgtLang');}
+function openSettings(){$('apiKeyInput').value=S.apiKey;$('silenceInput').value=S.silenceMs/1000;$('maxChunkInput').value=S.maxMs/1000;$('settingsModal').classList.add('open');}
+function closeSettings(){$('settingsModal').classList.remove('open');}
+function saveSettings(){S.apiKey=$('apiKeyInput').value.trim();S.silenceMs=(parseFloat($('silenceInput').value)||1.5)*1000;S.maxMs=(parseInt($('maxChunkInput').value)||12)*1000;localStorage.setItem('geminiKey',S.apiKey);localStorage.setItem('silenceMs',S.silenceMs);localStorage.setItem('maxMs',S.maxMs);closeSettings();showToast('✅ Saved');}
+$('settingsModal').addEventListener('click',e=>{if(e.target===$('settingsModal'))closeSettings();});
+$('settingsModal').querySelector('.modal').addEventListener('touchmove',e=>e.stopPropagation());
+function exportTxt(){if(!S.history.length){showToast(t('exportEmpty'));return;}let out=`${t('fileHeader')}\nExported: ${new Date().toLocaleString()}\n${'='.repeat(40)}\n\n`;S.history.forEach(e=>{const src=getLang(SRC_LANGS,e.srcLang),tgt=getLang(TGT_LANGS,e.tgtLang);out+=`[${e.ts}] ${e.speaker||'Speaker'} (${src.col} → ${tgt.col})\n${'-'.repeat(30)}\n`;if(!e.segments||!e.segments.length){out+=t('noSpeech')+'\n';}else e.segments.forEach(s=>{out+=`${src.col}: ${s.en}\n${tgt.col}: ${s.zh}\n\n`;});out+='\n';});const blob=new Blob([out],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`meeting_${new Date().toISOString().slice(0,10)}.txt`;a.click();URL.revokeObjectURL(url);showToast(t('exportDone'));}
+function applyI18n(){const ids=['appTitle','lblSrc','lblTgt','vBoth','vSrc','vTgt','emptyText','mTitle','lApiKey','hApiKey','lSilence','lMaxChunk','btnCancel','btnSave'];ids.forEach(id=>{const el=$(id);if(el)el.textContent=t(id);});updateRecUI();updateStats();fullRerender();}
+$('history').addEventListener('scroll',()=>{const el=$('history');const atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<60;if(!atBottom&&S.lockScroll){S.lockScroll=false;$('lockBtn').classList.add('lock-off');}});
+(function init(){renderPills();applyI18n();if(!S.apiKey)setTimeout(openSettings,400);})();
+</script>
+</body>
+</html>
