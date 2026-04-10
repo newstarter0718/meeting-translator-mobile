@@ -321,7 +321,18 @@ const PALETTE = [
   {bg:'#F3F0FF',text:'#7048E8',border:'#7950F2'},
   {bg:'#FFF9DB',text:'#E67700',border:'#F59F00'},
 ];
-const MODELS = ['gemini-3.1-pro', 'gemini-3.0-pro', 'gemini-3.0-flash', 'gemini-2.0-flash'];
+const MODELS = [
+  'gemini-3.1-pro',
+  'gemini-3.0-pro',
+  'gemini-2.5-pro',
+  'gemini-3.0-flash',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.0-pro-exp-02-05',
+  'gemini-2.0-flash-exp',
+  'gemini-1.5-pro-latest',
+  'gemini-1.5-flash-latest'
+];
 
 // ── State ────────────────────────────────────────────────
 const S = {
@@ -388,8 +399,7 @@ async function callGemini(blob,mime){
   const b64=await blobToB64(blob);
   const prompt=buildPrompt(S.srcLang,S.tgtLang);
   const cleanMime = mime.split(';')[0]; // Gemini requires clean mime type e.g. "audio/webm"
-  let lastError = null;
-  
+  let errList = [];
   for(const model of MODELS){
     try{
       const res=await fetch(
@@ -412,10 +422,14 @@ async function callGemini(blob,mime){
       return JSON.parse(txt);
     }catch(e){
       console.warn(model,e.message);
-      lastError = e.message;
+      if(e.message.includes('not found') || e.message.includes('404')){
+         errList.push(`${model} (404)`);
+      } else {
+         errList.push(`${model}: ${e.message}`);
+      }
     }
   }
-  throw new Error(lastError ? `API Error: ${lastError}` : 'All models failed');
+  throw new Error(`API log:\n${errList.join('\n')}`);
 }
 
 // ── Audio recording ──────────────────────────────────────
@@ -523,7 +537,7 @@ async function processChunk(blob,mime){
     if(r&&r.status!=='short_or_invalid')addEntry(r);
   }catch(e){
     console.error(e);
-    showToast('⚠️ '+e.message.slice(0,60));
+    alert('Failed to translate:\n' + e.message);
   }finally{
     $('procBar').classList.remove('on');
   }
