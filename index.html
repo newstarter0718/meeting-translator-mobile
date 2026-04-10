@@ -321,7 +321,7 @@ const PALETTE = [
   {bg:'#F3F0FF',text:'#7048E8',border:'#7950F2'},
   {bg:'#FFF9DB',text:'#E67700',border:'#F59F00'},
 ];
-const MODELS = ['gemini-3-flash-preview', 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
+const MODELS = ['gemini-3.1-pro', 'gemini-3.0-pro', 'gemini-3.0-flash', 'gemini-2.0-flash'];
 
 // ── State ────────────────────────────────────────────────
 const S = {
@@ -406,6 +406,7 @@ async function callGemini(blob,mime){
         throw new Error(e.error?.message || `HTTP ${res.status}`);
       }
       const data=await res.json();
+      console.log('Gemini success:', model);
       let txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'{}';
       txt=txt.replace(/^```json\n?/,'').replace(/^```\n?/,'').replace(/\n?```$/,'').trim();
       return JSON.parse(txt);
@@ -443,6 +444,14 @@ async function startRecording(){
   mediaRec=new MediaRecorder(audioStream,mime?{mimeType:mime}:{});
   mime=mediaRec.mimeType;
   mediaRec.ondataavailable=e=>{if(e.data&&e.data.size>0)audioChunks.push(e.data);};
+  mediaRec.onstop=()=>{
+    const chunks=[...audioChunks]; audioChunks=[];
+    const blob=new Blob(chunks,{type:mime});
+    if(blob.size>2000) processChunk(blob,mime);
+    if(S.recording){
+      try{mediaRec.start(500);}catch(e){console.error(e);}
+    }
+  };
   mediaRec.start(500);
 
   S.recording=true;
@@ -482,17 +491,12 @@ function startVolAnim(){
   })();
 }
 
-async function submitChunk(reason){
+function submitChunk(reason){
   if(!audioChunks.length)return;
+  console.log(`Chunk reason=${reason}`);
   if(mediaRec&&mediaRec.state==='recording'){
-    mediaRec.requestData();
-    await new Promise(r=>setTimeout(r,120));
+    mediaRec.stop();
   }
-  const chunks=[...audioChunks]; audioChunks=[];
-  const blob=new Blob(chunks,{type:mime});
-  if(blob.size<2000)return;
-  console.log(`Chunk: ${blob.size}B reason=${reason}`);
-  processChunk(blob,mime);
 }
 
 async function stopRecording(){
@@ -501,12 +505,6 @@ async function stopRecording(){
   if(cancelAnimationFrame)cancelAnimationFrame(rafId);
 
   if(mediaRec&&mediaRec.state!=='inactive'){
-    if(audioChunks.length){
-      mediaRec.requestData();
-      await new Promise(r=>setTimeout(r,200));
-      const blob=new Blob([...audioChunks],{type:mime});
-      if(blob.size>2000)processChunk(blob,mime);
-    }
     mediaRec.stop();
   }
   if(audioStream){audioStream.getTracks().forEach(t=>t.stop());audioStream=null;}
