@@ -235,10 +235,10 @@ body{background:var(--bg);color:var(--text);height:100dvh;
     <div class="modal-title" id="mTitle">⚙️ Settings</div>
 
     <div class="form-group">
-      <label class="form-label" id="lApiKey">Gemini API Key</label>
-      <input class="form-input" type="password" id="apiKeyInput" placeholder="AIza…">
+      <label class="form-label" id="lApiKey">Vertex AI API Key</label>
+      <input class="form-input" type="password" id="apiKeyInput" placeholder="AQ.…">
       <div class="form-hint" id="hApiKey">
-        Get free key: <strong>aistudio.google.com</strong> → Get API Key.<br>Stored on <em>this device only</em>.
+        Get key: <strong>Google Cloud Console</strong> → Vertex AI → Settings → API Keys.<br>Stored on <em>this device only</em>.
       </div>
     </div>
 
@@ -270,13 +270,13 @@ const I18N = {
     vBoth:'Both', vSrc:'Source', vTgt:'Translation',
     emptyText:'Tap the button below to start recording',
     recStart:'TAP', recStop:'STOP',
-    mTitle:'⚙️ Settings', lApiKey:'Gemini API Key',
-    hApiKey:'Get free key: aistudio.google.com → Get API Key. Stored on this device only.',
+    mTitle:'⚙️ Settings', lApiKey:'Vertex AI API Key',
+    hApiKey:'Get key: Google Cloud Console → Vertex AI → Settings → API Keys. Stored on this device only.',
     lSilence:'Silence timeout (seconds)', lMaxChunk:'Max chunk duration (seconds)',
     btnCancel:'Cancel', btnSave:'Save',
     noSpeech:'(No recognizable speech)', chunks:'chunks',
     exportEmpty:'No history to export.', exportDone:'.txt downloaded!',
-    needKey:'Please set your Gemini API Key in Settings ⚙️',
+    needKey:'Please set your Vertex AI API Key in Settings ⚙️',
     micDenied:'Microphone access denied. Please allow mic and retry.',
     fileHeader:'Meeting Translation Record',
   },
@@ -285,13 +285,13 @@ const I18N = {
     vBoth:'全部', vSrc:'原文', vTgt:'翻譯',
     emptyText:'點擊下方按鈕開始錄音',
     recStart:'開始', recStop:'停止',
-    mTitle:'⚙️ 設定', lApiKey:'Gemini API Key',
-    hApiKey:'免費取得：aistudio.google.com → Get API Key。僅存於本機裝置。',
+    mTitle:'⚙️ 設定', lApiKey:'Vertex AI API Key',
+    hApiKey:'取得金鑰：Google Cloud Console → Vertex AI → 設定 → API 金鑰。僅存於本機裝置。',
     lSilence:'靜音判斷（秒）', lMaxChunk:'最長錄音（秒）',
     btnCancel:'取消', btnSave:'儲存',
     noSpeech:'（此段無可辨識語音）', chunks:'段',
     exportEmpty:'尚無翻譯紀錄可匯出。', exportDone:'.txt 已下載！',
-    needKey:'請在設定 ⚙️ 中輸入 Gemini API Key',
+    needKey:'請在設定 ⚙️ 中輸入 Vertex AI API Key',
     micDenied:'麥克風存取被拒，請允許麥克風權限後重試。',
     fileHeader:'會議翻譯紀錄',
   }
@@ -321,17 +321,12 @@ const PALETTE = [
   {bg:'#F3F0FF',text:'#7048E8',border:'#7950F2'},
   {bg:'#FFF9DB',text:'#E67700',border:'#F59F00'},
 ];
+const VERTEX_PROJECT  = 'Alexgemini2035-Vertex-20260411';
+const VERTEX_LOCATION = 'us-central1';
 const MODELS = [
-  'gemini-3.1-pro',
-  'gemini-3.0-pro',
   'gemini-2.5-pro',
-  'gemini-3.0-flash',
   'gemini-2.5-flash',
   'gemini-2.0-flash',
-  'gemini-2.0-pro-exp-02-05',
-  'gemini-2.0-flash-exp',
-  'gemini-1.5-pro-latest',
-  'gemini-1.5-flash-latest'
 ];
 
 // ── State ────────────────────────────────────────────────
@@ -339,7 +334,7 @@ const S = {
   uiLang:    localStorage.getItem('uiLang')     || 'en',
   srcLang:   localStorage.getItem('srcLang')    || 'auto',
   tgtLang:   localStorage.getItem('tgtLang')    || 'zh-TW',
-  apiKey:    localStorage.getItem('geminiKey')  || '',
+  apiKey:    localStorage.getItem('vertexKey')  || '',
   silenceMs: +localStorage.getItem('silenceMs') || 1500,
   maxMs:     +localStorage.getItem('maxMs')     || 12000,
   view:      'both',
@@ -394,17 +389,18 @@ Rules:
 - Split into sentence-level segments. Output NOTHING outside the JSON.`;
 }
 
-// ── Gemini API ───────────────────────────────────────────
+// ── Vertex AI API ────────────────────────────────────────
 async function callGemini(blob,mime){
   const b64=await blobToB64(blob);
   const prompt=buildPrompt(S.srcLang,S.tgtLang);
-  const cleanMime = mime.split(';')[0]; // Gemini requires clean mime type e.g. "audio/webm"
+  const cleanMime = mime.split(';')[0];
   let errList = [];
   for(const model of MODELS){
     try{
-      const res=await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${S.apiKey}`,
-        {method:'POST',headers:{'Content-Type':'application/json'},
+      const endpoint=`https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${model}:generateContent`;
+      const res=await fetch(endpoint,
+        {method:'POST',
+         headers:{'Content-Type':'application/json','x-goog-api-key':S.apiKey},
          body:JSON.stringify({
            system_instruction:{parts:[{text:prompt}]},
            contents:[{role:'user',parts:[{inline_data:{mime_type:cleanMime,data:b64}}]}],
@@ -416,7 +412,7 @@ async function callGemini(blob,mime){
         throw new Error(e.error?.message || `HTTP ${res.status}`);
       }
       const data=await res.json();
-      console.log('Gemini success:', model);
+      console.log('Vertex AI success:', model);
       let txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'{}';
       txt=txt.replace(/^```json\n?/,'').replace(/^```\n?/,'').replace(/\n?```$/,'').trim();
       return JSON.parse(txt);
@@ -681,7 +677,7 @@ function saveSettings(){
   S.apiKey=$('apiKeyInput').value.trim();
   S.silenceMs=(parseFloat($('silenceInput').value)||1.5)*1000;
   S.maxMs=(parseInt($('maxChunkInput').value)||12)*1000;
-  localStorage.setItem('geminiKey',S.apiKey);
+  localStorage.setItem('vertexKey',S.apiKey);
   localStorage.setItem('silenceMs',S.silenceMs);
   localStorage.setItem('maxMs',S.maxMs);
   closeSettings();showToast('✅ Saved');
