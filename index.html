@@ -235,14 +235,6 @@ body{background:var(--bg);color:var(--text);height:100dvh;
     <div class="modal-title" id="mTitle">⚙️ Settings</div>
 
     <div class="form-group">
-      <label class="form-label" id="lApiKey">Vertex AI API Key</label>
-      <input class="form-input" type="password" id="apiKeyInput" placeholder="AQ.…">
-      <div class="form-hint" id="hApiKey">
-        Get key: <strong>Google Cloud Console</strong> → Vertex AI → Settings → API Keys.<br>Stored on <em>this device only</em>.
-      </div>
-    </div>
-
-    <div class="form-group">
       <label class="form-label" id="lSilence">Silence timeout (seconds)</label>
       <input class="form-input" type="number" id="silenceInput" value="1.5" min="0.5" max="5" step="0.5">
     </div>
@@ -270,13 +262,11 @@ const I18N = {
     vBoth:'Both', vSrc:'Source', vTgt:'Translation',
     emptyText:'Tap the button below to start recording',
     recStart:'TAP', recStop:'STOP',
-    mTitle:'⚙️ Settings', lApiKey:'Vertex AI API Key',
-    hApiKey:'Get key: Google Cloud Console → Vertex AI → Settings → API Keys. Stored on this device only.',
+    mTitle:'⚙️ Settings',
     lSilence:'Silence timeout (seconds)', lMaxChunk:'Max chunk duration (seconds)',
     btnCancel:'Cancel', btnSave:'Save',
     noSpeech:'(No recognizable speech)', chunks:'chunks',
     exportEmpty:'No history to export.', exportDone:'.txt downloaded!',
-    needKey:'Please set your Vertex AI API Key in Settings ⚙️',
     micDenied:'Microphone access denied. Please allow mic and retry.',
     fileHeader:'Meeting Translation Record',
   },
@@ -285,13 +275,11 @@ const I18N = {
     vBoth:'全部', vSrc:'原文', vTgt:'翻譯',
     emptyText:'點擊下方按鈕開始錄音',
     recStart:'開始', recStop:'停止',
-    mTitle:'⚙️ 設定', lApiKey:'Vertex AI API Key',
-    hApiKey:'取得金鑰：Google Cloud Console → Vertex AI → 設定 → API 金鑰。僅存於本機裝置。',
+    mTitle:'⚙️ 設定',
     lSilence:'靜音判斷（秒）', lMaxChunk:'最長錄音（秒）',
     btnCancel:'取消', btnSave:'儲存',
     noSpeech:'（此段無可辨識語音）', chunks:'段',
     exportEmpty:'尚無翻譯紀錄可匯出。', exportDone:'.txt 已下載！',
-    needKey:'請在設定 ⚙️ 中輸入 Vertex AI API Key',
     micDenied:'麥克風存取被拒，請允許麥克風權限後重試。',
     fileHeader:'會議翻譯紀錄',
   }
@@ -334,7 +322,6 @@ const S = {
   uiLang:    localStorage.getItem('uiLang')     || 'en',
   srcLang:   localStorage.getItem('srcLang')    || 'auto',
   tgtLang:   localStorage.getItem('tgtLang')    || 'zh-TW',
-  apiKey:    localStorage.getItem('vertexKey')  || '',
   silenceMs: +localStorage.getItem('silenceMs') || 1500,
   maxMs:     +localStorage.getItem('maxMs')     || 12000,
   view:      'both',
@@ -397,14 +384,16 @@ async function callGemini(blob,mime){
   let errList = [];
   for(const model of MODELS){
     try{
-      const endpoint=`https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${model}:generateContent`;
-      const res=await fetch(endpoint,
+      const res=await fetch('/api/translate',
         {method:'POST',
-         headers:{'Content-Type':'application/json','x-goog-api-key':S.apiKey},
+         headers:{'Content-Type':'application/json'},
          body:JSON.stringify({
-           system_instruction:{parts:[{text:prompt}]},
-           contents:[{role:'user',parts:[{inline_data:{mime_type:cleanMime,data:b64}}]}],
-           generationConfig:{response_mime_type:'application/json'}
+           model,
+           payload:{
+             system_instruction:{parts:[{text:prompt}]},
+             contents:[{role:'user',parts:[{inline_data:{mime_type:cleanMime,data:b64}}]}],
+             generationConfig:{response_mime_type:'application/json'}
+           }
          })}
       );
       if(!res.ok){
@@ -412,7 +401,7 @@ async function callGemini(blob,mime){
         throw new Error(e.error?.message || `HTTP ${res.status}`);
       }
       const data=await res.json();
-      console.log('Vertex AI success:', model);
+      console.log('Translate success:', model);
       let txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'{}';
       txt=txt.replace(/^```json\n?/,'').replace(/^```\n?/,'').replace(/\n?```$/,'').trim();
       return JSON.parse(txt);
@@ -439,7 +428,6 @@ function getSupportedMime(){
 }
 
 async function startRecording(){
-  if(!S.apiKey){showToast(t('needKey'));return;}
   try{
     audioStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
   }catch(e){showToast(t('micDenied'));return;}
@@ -667,17 +655,14 @@ function renderPills(){
 
 // ── Settings modal ────────────────────────────────────────
 function openSettings(){
-  $('apiKeyInput').value=S.apiKey;
   $('silenceInput').value=S.silenceMs/1000;
   $('maxChunkInput').value=S.maxMs/1000;
   $('settingsModal').classList.add('open');
 }
 function closeSettings(){$('settingsModal').classList.remove('open');}
 function saveSettings(){
-  S.apiKey=$('apiKeyInput').value.trim();
   S.silenceMs=(parseFloat($('silenceInput').value)||1.5)*1000;
   S.maxMs=(parseInt($('maxChunkInput').value)||12)*1000;
-  localStorage.setItem('vertexKey',S.apiKey);
   localStorage.setItem('silenceMs',S.silenceMs);
   localStorage.setItem('maxMs',S.maxMs);
   closeSettings();showToast('✅ Saved');
@@ -709,7 +694,7 @@ function exportTxt(){
 // ── i18n apply ────────────────────────────────────────────
 function applyI18n(){
   const ids=['appTitle','lblSrc','lblTgt','vBoth','vSrc','vTgt',
-             'emptyText','mTitle','lApiKey','hApiKey','lSilence','lMaxChunk',
+             'emptyText','mTitle','lSilence','lMaxChunk',
              'btnCancel','btnSave'];
   ids.forEach(id=>{const el=$(id);if(el)el.textContent=t(id);});
   updateRecUI(); updateStats(); fullRerender();
@@ -729,7 +714,6 @@ $('history').addEventListener('scroll',()=>{
 (function init(){
   renderPills();
   applyI18n();
-  if(!S.apiKey)setTimeout(openSettings,400);
 })();
 </script>
 </body>
