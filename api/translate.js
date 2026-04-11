@@ -18,6 +18,9 @@ export default async function handler(req, res) {
 
   const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent`;
 
+  // Debug: return endpoint info on first model attempt
+  console.log('Calling:', endpoint);
+
   try {
     const upstream = await fetch(endpoint, {
       method: 'POST',
@@ -29,8 +32,17 @@ export default async function handler(req, res) {
     });
 
     const data = await upstream.json();
-    return res.status(upstream.status).json(data);
+
+    // If failed, include endpoint in error for debugging
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({
+        ...data,
+        _debug: { endpoint, project, location, model },
+      });
+    }
+
+    return res.status(200).json(data);
   } catch (err) {
-    return res.status(502).json({ error: 'Upstream request failed.', detail: err.message });
+    return res.status(502).json({ error: 'Upstream request failed.', detail: err.message, _debug: { endpoint } });
   }
 }
