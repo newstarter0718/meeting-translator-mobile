@@ -3,7 +3,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.VERTEX_API_KEY;
+  const apiKey  = process.env.VERTEX_API_KEY;
+  const project = process.env.VERTEX_PROJECT  || 'alexgemini2035-vertex-20260411';
+  const location = process.env.VERTEX_LOCATION || 'us-central1';
 
   if (!apiKey) {
     return res.status(500).json({ error: 'VERTEX_API_KEY not configured on server.' });
@@ -14,8 +16,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing model or payload.' });
   }
 
-  // Vertex AI Express API keys (AQ.*) are compatible with the Gemini API endpoint
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent`;
 
   try {
     const upstream = await fetch(endpoint, {
