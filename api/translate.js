@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -18,9 +18,6 @@ export default async function handler(req, res) {
 
   const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent`;
 
-  // Debug: return endpoint info on first model attempt
-  console.log('Calling:', endpoint);
-
   try {
     const upstream = await fetch(endpoint, {
       method: 'POST',
@@ -33,7 +30,6 @@ export default async function handler(req, res) {
 
     const data = await upstream.json();
 
-    // If failed, include endpoint in error for debugging
     if (!upstream.ok) {
       return res.status(upstream.status).json({
         ...data,
@@ -45,4 +41,4 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(502).json({ error: 'Upstream request failed.', detail: err.message, _debug: { endpoint } });
   }
-}
+};
